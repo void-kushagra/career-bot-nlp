@@ -1,28 +1,21 @@
-from sentence_transformers import SentenceTransformer
-import pandas as pd
-import faiss
-import numpy as np
 from flask import Flask, request, jsonify, render_template
 from fuzzywuzzy import fuzz
-
-# Load embedding model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+import pandas as pd
+import numpy as np
+import faiss
 
 # Load dataset
 df = pd.read_csv("dataset.csv")
-
-# ✅ Fill NaNs with empty strings
 df = df.fillna("")
 
-# ✅ Load precomputed embeddings
-print("🔄 Loading precomputed embeddings... please wait ⏳")
+# Load pre-generated embeddings
 embeddings = np.load("embeddings.npy").astype("float32")
 
 # Build FAISS index
 index = faiss.IndexFlatL2(embeddings.shape[1])
 index.add(embeddings)
 
-# Flask app
+# Initialize Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
 @app.route("/")
@@ -36,14 +29,7 @@ def ask():
     if not question:
         return jsonify({"answer": "Please enter a valid query."})
 
-    # Embed query and search
-    q_emb = model.encode([question]).astype("float32")
-    distances, indices = index.search(q_emb, k=1)
-
-    idx = indices[0][0]
-    score = 100 - distances[0][0]  # similarity estimate
-
-    # Fuzzy match with names to avoid irrelevant mapping
+    # Convert question to vector using fuzzy matching only
     best_match_score = 0
     best_match_idx = None
     for i, name in enumerate(df["name"]):
@@ -52,14 +38,16 @@ def ask():
             best_match_score = match_score
             best_match_idx = i
 
-    # Use fuzzy result if more relevant than embedding
-    if best_match_score > 70:
-        idx = best_match_idx
+    # FAISS search
+    q_vec = embeddings[best_match_idx:best_match_idx+1]
+    distances, indices = index.search(q_vec, k=1)
+    idx = indices[0][0]
 
-    # Optional threshold for very poor matches
+    # Optional: Reject if match is too weak
     if distances[0][0] > 30 and best_match_score < 50:
-        return jsonify({"answer": "Sorry, couldn't understand. Try rephrasing your query."})
+        return jsonify({"answer": "Sorry, couldn't understand. Please rephrase your query."})
 
+    # Generate response
     row = df.iloc[idx]
     answer = (
         f"Career: {row['name']}\n"
