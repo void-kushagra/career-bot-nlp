@@ -14,19 +14,9 @@ df = pd.read_csv("dataset.csv")
 # ✅ Fill NaNs with empty strings
 df = df.fillna("")
 
-# Combine relevant fields into one text
-texts = (
-    df["name"] + ". Fields: " + df["fields"] +
-    ". Background: " + df["background"] +
-    ". Skills: " + df["skills"] +
-    ". Advice: " + df["advice"] +
-    ". Future scope: " + df["future_scope"]
-).tolist()
-
-# Generate embeddings
-print("Embedding dataset... please wait ⏳")
-embeddings = model.encode(texts, show_progress_bar=True)
-embeddings = np.array(embeddings).astype("float32")
+# ✅ Load precomputed embeddings
+print("🔄 Loading precomputed embeddings... please wait ⏳")
+embeddings = np.load("embeddings.npy").astype("float32")
 
 # Build FAISS index
 index = faiss.IndexFlatL2(embeddings.shape[1])
