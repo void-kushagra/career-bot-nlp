@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from fuzzywuzzy import fuzz
+from sentence_transformers import SentenceTransformer
 import pandas as pd
 import numpy as np
 import faiss
@@ -9,12 +9,15 @@ import os
 df = pd.read_csv("dataset.csv")
 df = df.fillna("")
 
-# Load pre-generated embeddings
+# Load embeddings
 embeddings = np.load("embeddings.npy").astype("float32")
 
 # Build FAISS index
 index = faiss.IndexFlatL2(embeddings.shape[1])
 index.add(embeddings)
+
+# Load model
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -30,34 +33,36 @@ def ask():
     if not question:
         return jsonify({"answer": "Please enter a valid query."})
 
-    # Convert question to vector using fuzzy matching only
-    best_match_score = 0
-    best_match_idx = None
-    for i, name in enumerate(df["name"]):
-        match_score = fuzz.partial_ratio(question.lower(), name.lower())
-        if match_score > best_match_score:
-            best_match_score = match_score
-            best_match_idx = i
+    # Generate embedding of the question
+    q_vec = model.encode([question], convert_to_numpy=True).astype("float32")
 
-    # FAISS search
-    q_vec = embeddings[best_match_idx:best_match_idx+1]
+    # Search for best match
     distances, indices = index.search(q_vec, k=1)
     idx = indices[0][0]
 
-    # Optional: Reject if match is too weak
-    if distances[0][0] > 30 and best_match_score < 50:
-        return jsonify({"answer": "Sorry, couldn't understand. Please rephrase your query."})
+    # Reject weak matches
+    if distances[0][0] > 1.5:
+        return jsonify({"answer": "Sorry, I couldn't understand that. Try rephrasing or being more specific."})
 
-    # Generate response
+    # Get matched row
     row = df.iloc[idx]
     answer = (
         f"Career: {row['name']}\n"
+        f"Domain: {row['major_domain']}\n"
         f"Fields: {row['fields']}\n"
         f"Background: {row['background']}\n"
         f"Skills: {row['skills']}\n"
+        f"Typical Salary: {row['typical_salary']}\n"
+        f"Demand Level: {row['demand_level']}\n"
+        f"Course Duration: {row['course_duration']}\n"
+        f"Top Companies: {row['top_companies']}\n"
         f"Advice: {row['advice']}\n"
-        f"Future scope: {row['future_scope']}"
+        f"Future Scope: {row['future_scope']}\n"
+        f"Related Courses: {row['related_courses']}\n"
+        f"Career Switch Options: {row['career_switch_options']}\n"
+        f"Goals Aligned: {row['goals_aligned']}"
     )
+
     return jsonify({"answer": answer})
 
 if __name__ == "__main__":
