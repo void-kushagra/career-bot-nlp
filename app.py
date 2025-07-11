@@ -1,23 +1,25 @@
 from flask import Flask, request, jsonify, render_template
-from sentence_transformers import SentenceTransformer
 import pandas as pd
 import numpy as np
 import faiss
 import os
+import requests
 
 # Load dataset
 df = pd.read_csv("dataset.csv")
 df = df.fillna("")
 
-# Load embeddings
+# Load pre-generated embeddings
 embeddings = np.load("embeddings.npy").astype("float32")
 
 # Build FAISS index
 index = faiss.IndexFlatL2(embeddings.shape[1])
 index.add(embeddings)
 
-# Load model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+# Hugging Face API setup
+HF_TOKEN = os.environ.get("HF_TOKEN")
+API_URL = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+headers = {"Authorization": f"Bearer {HF_TOKEN}"}
 
 # Initialize Flask app
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -33,10 +35,14 @@ def ask():
     if not question:
         return jsonify({"answer": "Please enter a valid query."})
 
-    # Generate embedding of the question
-    q_vec = model.encode([question], convert_to_numpy=True).astype("float32")
+    # Generate embedding using Hugging Face API
+    response = requests.post(API_URL, headers=headers, json={"inputs": question})
+    if response.status_code != 200:
+        return jsonify({"answer": "Error generating response. Please try again later."})
+    
+    q_vec = np.array(response.json(), dtype="float32").reshape(1, -1)
 
-    # Search for best match
+    # FAISS search
     distances, indices = index.search(q_vec, k=1)
     idx = indices[0][0]
 
@@ -44,7 +50,7 @@ def ask():
     if distances[0][0] > 1.5:
         return jsonify({"answer": "Sorry, I couldn't understand that. Try rephrasing or being more specific."})
 
-    # Get matched row
+    # Format result
     row = df.iloc[idx]
     answer = (
         f"Career: {row['name']}\n"
@@ -62,7 +68,6 @@ def ask():
         f"Career Switch Options: {row['career_switch_options']}\n"
         f"Goals Aligned: {row['goals_aligned']}"
     )
-
     return jsonify({"answer": answer})
 
 if __name__ == "__main__":
