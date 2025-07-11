@@ -32,11 +32,16 @@ def home():
 def ask():
     data = request.json
     question = data.get("question", "").strip()
+    print(f"[INFO] Received question: {question}")
+
     if not question:
         return jsonify({"answer": "Please enter a valid query."})
 
-    # Generate embedding using Hugging Face API
+    print("[INFO] Sending question to Hugging Face API...")
     response = requests.post(API_URL, headers=headers, json={"inputs": question})
+    print(f"[INFO] HF API Status Code: {response.status_code}")
+    print(f"[INFO] HF API Raw Response: {response.text}")
+
     if response.status_code != 200:
         return jsonify({"answer": "Error generating response. Please try again later."})
     
@@ -71,5 +76,5 @@ def ask():
     return jsonify({"answer": answer})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", "10000"))  # changed default to 10000
     app.run(host="0.0.0.0", port=port, debug=False)
