@@ -51,6 +51,8 @@ def ask():
         print("[DEBUG] Input vector shape:", q_vec.shape)
         print("[DEBUG] FAISS index dimension:", index.d)
 
+        
+
         distances, indices = index.search(q_vec, k=1)
         print("[INFO] FAISS search distances:", distances)
         print("[INFO] FAISS search indices:", indices)
