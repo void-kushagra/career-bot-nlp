@@ -24,20 +24,28 @@ def home():
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    data = request.json
-    vector = data.get("vector")
-
-    if not vector:
-        return jsonify({"answer": "No embedding vector received."})
-
     try:
+        data = request.get_json()
+        print("[INFO] Received data:", data)
+
+        if not data or "vector" not in data:
+            return jsonify({"answer": "No embedding vector received."})
+
+        vector = data["vector"]
         q_vec = np.array(vector, dtype="float32").reshape(1, -1)
+        print("[INFO] Vector shape:", q_vec.shape)
+
+        # FAISS search
         distances, indices = index.search(q_vec, k=1)
+        print("[INFO] FAISS result:", distances, indices)
+
         idx = indices[0][0]
 
+        # Reject weak matches
         if distances[0][0] > 1.5:
             return jsonify({"answer": "Sorry, I couldn't understand that. Try rephrasing or being more specific."})
 
+        # Fetch matched row
         row = df.iloc[idx]
         answer = (
             f"Career: {row['name']}\n"
@@ -58,7 +66,7 @@ def ask():
         return jsonify({"answer": answer})
 
     except Exception as e:
-        print("[ERROR]", e)
+        print("[ERROR] Exception occurred:", str(e))
         return jsonify({"answer": "Internal error during processing."})
 
 if __name__ == "__main__":
