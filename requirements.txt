@@ -1,10 +1,4 @@
 flask
 pandas
-sentence-transformers
 faiss-cpu
-fuzzywuzzy
-python-Levenshtein
 numpy
-requests
-
-

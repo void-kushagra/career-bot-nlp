@@ -1,8 +1,19 @@
+let useModel;
+
+// Load Universal Sentence Encoder
+async function loadUSEModel() {
+  if (!useModel) {
+    useModel = await use.load(); // Corrected from use() to use.load()
+    console.log("[INFO] USE model loaded");
+  }
+}
+loadUSEModel();
+
 async function sendMessage() {
   const input = document.getElementById("user-input");
   const chatBox = document.getElementById("chat-box");
   const userText = input.value.trim();
-  if (!userText) return;
+  if (!userText || !useModel) return;
 
   // Add user message
   const userMsg = document.createElement("div");
@@ -17,19 +28,24 @@ async function sendMessage() {
   chatBox.appendChild(botMsg);
   chatBox.scrollTop = chatBox.scrollHeight;
 
-  // Fetch response from Flask
   try {
+    // Generate embedding using USE in-browser
+    const embeddings = await useModel.embed([userText]);
+    const vector = embeddings.arraySync()[0];
+
+    // Send embedding to Flask backend
     const response = await fetch("/ask", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ question: userText })
+      body: JSON.stringify({ vector: vector })
     });
 
     const data = await response.json();
     botMsg.textContent = data.answer;
   } catch (err) {
+    console.error("[ERROR]", err);
     botMsg.textContent = "Oops! Something went wrong.";
   }
 
