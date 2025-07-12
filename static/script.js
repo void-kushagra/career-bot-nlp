@@ -1,11 +1,9 @@
 let useModel;
 
-// Load Universal Sentence Encoder
+// Load Universal Sentence Encoder properly
 async function loadUSEModel() {
-  if (!useModel) {
-    useModel = await use.load(); // Corrected from use() to use.load()
-    console.log("[INFO] USE model loaded");
-  }
+  useModel = await use.load();
+  console.log("[INFO] USE model loaded");
 }
 loadUSEModel();
 
@@ -29,7 +27,7 @@ async function sendMessage() {
   chatBox.scrollTop = chatBox.scrollHeight;
 
   try {
-    // Generate embedding using USE in-browser
+    // Generate embedding in-browser
     const embeddings = await useModel.embed([userText]);
     const vector = embeddings.arraySync()[0];
 

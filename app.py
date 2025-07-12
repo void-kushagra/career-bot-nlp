@@ -56,6 +56,7 @@ def ask():
             f"Goals Aligned: {row['goals_aligned']}"
         )
         return jsonify({"answer": answer})
+
     except Exception as e:
         print("[ERROR]", e)
         return jsonify({"answer": "Internal error during processing."})
