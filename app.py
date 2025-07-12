@@ -32,8 +32,14 @@ def ask():
             return jsonify({"answer": "No embedding vector received."})
 
         vector = data["vector"]
+
+        # Debug information
+        print("[INFO] Vector type:", type(vector))
+        print("[INFO] Vector length:", len(vector))
+        print("[INFO] First 5 values:", vector[:5])
+
         q_vec = np.array(vector, dtype="float32").reshape(1, -1)
-        print("[INFO] Vector shape:", q_vec.shape)
+        print("[INFO] Vector shape after reshape:", q_vec.shape)
 
         # FAISS search
         distances, indices = index.search(q_vec, k=1)
@@ -41,11 +47,9 @@ def ask():
 
         idx = indices[0][0]
 
-        # Reject weak matches
         if distances[0][0] > 1.5:
             return jsonify({"answer": "Sorry, I couldn't understand that. Try rephrasing or being more specific."})
 
-        # Fetch matched row
         row = df.iloc[idx]
         answer = (
             f"Career: {row['name']}\n"
