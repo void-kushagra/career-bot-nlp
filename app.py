@@ -29,6 +29,7 @@ def ask():
         print("[INFO] Received data:", data)
 
         if not data or "vector" not in data:
+            print("[ERROR] No 'vector' field in request.")
             return jsonify({"answer": "No embedding vector received."})
 
         vector = data["vector"]
@@ -36,14 +37,15 @@ def ask():
         # Debug information
         print("[INFO] Vector type:", type(vector))
         print("[INFO] Vector length:", len(vector))
-        print("[INFO] First 5 values:", vector[:5])
+        print("[INFO] First 5 values of vector:", vector[:5])
 
         q_vec = np.array(vector, dtype="float32").reshape(1, -1)
         print("[INFO] Vector shape after reshape:", q_vec.shape)
 
         # FAISS search
         distances, indices = index.search(q_vec, k=1)
-        print("[INFO] FAISS result:", distances, indices)
+        print("[INFO] FAISS search distances:", distances)
+        print("[INFO] FAISS search indices:", indices)
 
         idx = indices[0][0]
 
