@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import faiss
 import os
+import traceback  # ✅ Added for better error visibility
 
 # Load dataset
 df = pd.read_csv("dataset.csv")
@@ -30,17 +31,21 @@ def ask():
 
         if not data or "vector" not in data:
             print("[ERROR] No 'vector' field in request.")
-            return jsonify({"answer": "No embedding vector received."})
+            return jsonify({"answer": "No embedding vector received."}), 400
 
         vector = data["vector"]
 
-        # Debug information
+        # Debug info
         print("[INFO] Vector type:", type(vector))
         print("[INFO] Vector length:", len(vector))
         print("[INFO] First 5 values of vector:", vector[:5])
 
         q_vec = np.array(vector, dtype="float32").reshape(1, -1)
         print("[INFO] Vector shape after reshape:", q_vec.shape)
+
+        if q_vec.shape[1] != 512:
+            print("[ERROR] Invalid vector size:", q_vec.shape)
+            return jsonify({"answer": "Invalid vector dimensions. Must be 512."}), 400
 
         # FAISS search
         distances, indices = index.search(q_vec, k=1)
@@ -72,8 +77,9 @@ def ask():
         return jsonify({"answer": answer})
 
     except Exception as e:
-        print("[ERROR] Exception occurred:", str(e))
-        return jsonify({"answer": "Internal error during processing."})
+        print("[ERROR] Exception occurred:")
+        traceback.print_exc()  # ✅ Prints the exact error and line
+        return jsonify({"answer": "Internal error during processing."}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
